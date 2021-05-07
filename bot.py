@@ -145,6 +145,10 @@ async def create_error(context, error):
         embed=discord.Embed(title="ERROR!", description="A name is required for this command! Try again.",
         color=discord.Color.red())
         await context.send(embed=embed)
+    elif isinstance(error, discord.ext.commands.errors.UnexpectedQuoteError):
+        embed=discord.Embed(title="ERROR!", description="You cannot include quotations in your raffle name.",
+        color=discord.Color.red())
+        await context.send(embed=embed)
     else:
         print('Ignoring exception in command {}:'.format(context.command), file=sys.stderr)
         traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr) 
