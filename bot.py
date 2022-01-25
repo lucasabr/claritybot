@@ -5,6 +5,8 @@ import random
 import discord
 import pyjokes
 import raffle
+import pip._vendor.requests as requests
+import yfinance as yf
 import sys
 import traceback
 
@@ -30,6 +32,8 @@ async def help(context):
     embed=discord.Embed(title="Help", description='Here is a list of all the possible commands', color=discord.Color.gold())
     embed.add_field(name="+joke", value="This command sends a random joke using the pyjokes library", inline=False)
     embed.add_field(name="+raffle", value="Group of commands that involve raffles", inline=False)
+    embed.add_field(name="+finance", value="Group of commands that involve stocks and finance", inline=False)
+    embed.add_field(name="+github", value="Group of commands that involve github", inline=False)
     embed.add_field(name="+randomnum [min] [max]", value="Chooses a random number from [min] to [max].")
     embed.add_field(name="+randomnum nm [max]", value="Chooses a random number from 0 to [max].")
     await context.send(embed=embed)
@@ -252,6 +256,114 @@ async def disband_error(context, error):
         print('Ignoring exception in command {}:'.format(context.command), file=sys.stderr)
         traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
 
+# Finance Group of commands
+# The +finance command showcases all the possible commands
+@bot.group(name='finance', invoke_without_command=True)
+async def financeCmd(context):
+    embed=discord.Embed(title="Finance", description="The Finance Command has many subcommands", color=discord.Color.purple())
+    embed.add_field(name='+finance price [TICKER]', value='Shows the current price of the stock', inline=False)
+    embed.add_field(name='+finance info [TICKER]', value='Gives a basic overview of the company', inline=False)
+    embed.add_field(name='+finance quote [TICKER]', value='Shows basic statistics about the stock', inline=False)
+    await context.send(embed=embed)
+
+@financeCmd.command(name='price')
+async def getPrice(context, ticker):
+    stock = yf.Ticker(ticker).info
+    print(stock)
+    currency = stock['currency']
+    price = stock['currentPrice']
+    name = stock['longName']
+    img = stock['logo_url']
+    embed=discord.Embed(title=name + " [" + (str)(ticker) + "]", description=currency + " $" + (str)(price), color=discord.Color.purple())
+    embed.set_thumbnail(url=img)
+    await context.send(embed=embed)
+
+@getPrice.error
+async def getPrice_error(context, error):
+    embed=discord.Embed(title="ERROR", description="Something went wrong! Make sure the ticker you provided is valid", color=discord.Color.red())
+    print(error)
+    await context.send(embed=embed)
+
+@financeCmd.command(name='info')
+async def getInfo(context, ticker):
+    stock = yf.Ticker(ticker).info
+    summary = stock['longBusinessSummary']
+    name = stock['longName']
+    img = stock['logo_url']
+    embed=discord.Embed(title=name + " [" + (str)(ticker) + "]", description=summary, color=discord.Color.purple())
+    embed.set_thumbnail(url=img)
+    await context.send(embed=embed)
+
+@getInfo.error
+async def getInfo_error(context, error):
+    embed=discord.Embed(title="ERROR", description="Something went wrong! Make sure the ticker you provided is valid", color=discord.Color.red())
+    print(error)
+    await context.send(embed=embed)
+
+@financeCmd.command(name='quote')
+async def getQuote(context, ticker):
+    stock = yf.Ticker(ticker)
+    info = stock.info
+    currency = info['currency']
+    price = info['currentPrice']
+    name = info['longName']
+    img = info['logo_url']
+    embed=discord.Embed(title=name + " [" + (str)(ticker) + "]", color=discord.Color.purple())
+    embed.add_field(name="Price", value=currency + " $" + (str)(price), inline=False)
+
+
+    fiftytwoweeklow = currency + " $" + str(info['fiftyTwoWeekLow'])
+    fiftytwoweekhigh = str(info['fiftyTwoWeekHigh'])
+    daylow = currency + " $" + str(info['dayLow'])
+    dayhigh = str(info['dayHigh'])
+    
+    embed.add_field(name="Day's Range", value=daylow + " - " + dayhigh)
+    embed.add_field(name="52 Week Range", value=fiftytwoweeklow + " - " + fiftytwoweekhigh)
+
+    try:
+        marketcap = info['marketCap']
+        marketcap = format_num(marketcap)
+        embed.add_field(name="Market Cap", value=marketcap, inline=False)
+    except KeyError:
+        print("No marketcap")
+
+    try:
+        pe = info['trailingPE']
+        embed.add_field(name="PE", value=round(pe, 2), inline=False)
+    except KeyError:
+        print("No PE ratio")
+
+    try: 
+        dividendRate = info['dividendRate']
+        if(isinstance(dividendRate, float)):
+            dividendYield = round((float(dividendRate)/float(price)) * 100, 2)
+            embed.add_field(name="Dividend Rate", value=dividendRate, inline=False)
+            embed.add_field(name="Dividend Yield", value=dividendYield, inline=False)
+    except KeyError:
+        print("No Dividend")
+
+    try:
+        eps = info['trailingEps']
+        embed.add_field(name="Earnings Per Share", value=round(eps, 2), inline=False)
+    except KeyError:
+        print("No EPS")
+    
+    try:
+        beta = info['beta']
+        embed.add_field(name="Beta", value=round(beta, 2), inline=False)
+    except KeyError:
+        print("No Beta")
+
+    embed.set_thumbnail(url=img)
+    await context.send(embed=embed)
+
+
+@getQuote.error
+async def getQuote_error(context, error):
+    embed=discord.Embed(title="ERROR", description="Something went wrong! Make sure the ticker you provided is valid", color=discord.Color.red())
+    print(error)
+    await context.send(embed=embed)
+
 # Finds the correct raffle by name in the raffleList
 def find(name, guild):
     for x in raffleList:
@@ -264,6 +376,14 @@ def contains(name, guild):
         if(name==x.name and guild==x.guild):
             value = True
     return value
+
+#formats numbers for market cap
+def format_num(num):
+    magnitude = 0
+    while abs(num) >= 1000:
+        magnitude += 1
+        num /= 1000.0
+    return '%.2f%s' % (num, ['', 'K', 'M', 'B', 'T'][magnitude])
 
 #runs the bot
 bot.run(TOKEN)
