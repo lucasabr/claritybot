@@ -33,7 +33,7 @@ async def help(context):
     embed.add_field(name="+joke", value="This command sends a random joke using the pyjokes library", inline=False)
     embed.add_field(name="+raffle", value="Group of commands that involve raffles", inline=False)
     embed.add_field(name="+finance", value="Group of commands that involve stocks and finance", inline=False)
-    embed.add_field(name="+github", value="Group of commands that involve github", inline=False)
+    embed.add_field(name="+github [user]", value="Shows github stats of a user", inline=False)
     embed.add_field(name="+randomnum [min] [max]", value="Chooses a random number from [min] to [max].")
     embed.add_field(name="+randomnum nm [max]", value="Chooses a random number from 0 to [max].")
     await context.send(embed=embed)
@@ -361,6 +361,26 @@ async def getQuote(context, ticker):
 @getQuote.error
 async def getQuote_error(context, error):
     embed=discord.Embed(title="ERROR", description="Something went wrong! Make sure the ticker you provided is valid", color=discord.Color.red())
+    print(error)
+    await context.send(embed=embed)
+
+@bot.group(name='github', invoke_without_command=True)
+async def getGithubStats(context, user: str):
+    apiRequest = f'https://api.github.com/users/{user}'
+    r = requests.get(apiRequest)
+    json = r.json()
+    url = json['html_url']
+    followers = json['followers']
+    public_repos = json['public_repos']
+    embed=discord.Embed(title=f'{user}\'s profile', url=url, color=discord.Color.dark_orange())
+    embed.add_field(name='Followers', value=followers, inline=False)
+    embed.add_field(name='Public Repos', value=public_repos, inline=False)
+    embed.set_thumbnail(url=json['avatar_url'])
+    await context.send(embed=embed)
+ 
+@getGithubStats.error
+async def getGithub_error(context, error):
+    embed=discord.Embed(title="ERROR", description="Something went wrong!", color=discord.Color.red())
     print(error)
     await context.send(embed=embed)
 
